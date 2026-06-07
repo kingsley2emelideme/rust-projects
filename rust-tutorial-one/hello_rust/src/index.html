@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>M4 MacBook Quant Dashboard</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            margin: 40px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #34d399;
+            border-bottom: 2px solid #1e293b;
+            padding-bottom: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: #1e293b;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        h3 {
+            margin-top: 0;
+            color: #60a5fa;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 8px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            color: white;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #059669;
+        }
+
+        pre {
+            background: #0f172a;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            overflow-x: auto;
+            font-family: "SF Mono", Monaco, monospace;
+            color: #a7f3d0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>M4 MacBook High-Performance Quant Dashboard</h1>
+
+        <div class="grid">
+            <!-- PRICING PANEL -->
+            <div class="card">
+                <h3>Option Pricing & Greeks Engine</h3>
+                <div class="form-group">
+                    <label>Stock Price ($)</label>
+                    <input type="number" id="stock" value="100" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Strike Price ($)</label>
+                    <input type="number" id="strike" value="95" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Time to Maturity (Years)</label>
+                    <input type="number" id="maturity" value="1.0" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>Risk-Free Rate (e.g. 0.05 = 5%)</label>
+                    <input type="number" id="rate" value="0.05" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Volatility (e.g. 0.20 = 20%)</label>
+                    <input type="number" id="vol" value="0.20" step="0.01">
+                </div>
+                <button onclick="runPricing()">Compute Pricing Ecosystem</button>
+                <div style="margin-top:20px;">
+                    <strong>Output Vector:</strong>
+                    <pre id="pricingOutput">Click compute to fire Rayon parallel execution paths...</pre>
+                </div>
+            </div>
+
+            <!-- IV COMPENSATOR PANEL -->
+            <div class="card">
+                <h3>Newton-Raphson Implied Volatility Solver</h3>
+                <div class="form-group">
+                    <label>Observed Market Price ($)</label>
+                    <input type="number" id="mktPrice" value="13.35" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Option Type</label>
+                    <select id="optionType">
+                        <option value="true">Call Option</option>
+                        <option value="false">Put Option</option>
+                    </select>
+                </div>
+                <button onclick="runIv()" style="background:#2563eb;">Solve Implied Volatility</button>
+                <div style="margin-top:20px;">
+                    <strong>Convergence Result:</strong>
+                    <pre id="ivOutput" style="color:#bfdbfe;">Awaiting observed target fields...</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function runPricing() {
+            const payload = {
+                stock_price: parseFloat(document.getElementById('stock').value),
+                strike_price: parseFloat(document.getElementById('strike').value),
+                time_to_maturity: parseFloat(document.getElementById('maturity').value),
+                risk_free_rate: parseFloat(document.getElementById('rate').value),
+                volatility: parseFloat(document.getElementById('vol').value)
+            };
+            const response = await fetch('/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            document.getElementById('pricingOutput').textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function runIv() {
+            const payload = {
+                inputs: {
+                    stock_price: parseFloat(document.getElementById('stock').value),
+                    strike_price: parseFloat(document.getElementById('strike').value),
+                    time_to_maturity: parseFloat(document.getElementById('maturity').value),
+                    risk_free_rate: parseFloat(document.getElementById('rate').value),
+                    volatility: 0.20 // Standard placeholder, overwritten by solver loop
+                },
+                observed_market_price: parseFloat(document.getElementById('mktPrice').value),
+                is_call: document.getElementById('optionType').value === "true"
+            };
+            const response = await fetch('/calculate-iv', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const text = await response.text();
+            try {
+                const data = JSON.parse(text);
+                document.getElementById('ivOutput').textContent = `Implied Volatility (IV): ${(data.implied_volatility * 100).toFixed(4)}%`;
+            } catch (e) {
+                document.getElementById('ivOutput').textContent = text;
+            }
+        }
+    </script>
+</body>
+
+</html>
